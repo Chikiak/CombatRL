@@ -55,10 +55,10 @@
       ```
 * **Constraints:** Headless compilation (`cargo check --no-default-features --features python`) must NOT link against any GPU, C/C++ rendering, or windowing system library (e.g., `libX11`, `libGL`, `libglfw`).
 * **Acceptance Criteria:**
-    - [ ] `Cargo.toml` is created with declared `[features]`, `[lib]`, `[[bin]]`, and explicit dependencies.
-    - [ ] `src/lib.rs` and `src/main.rs` exist with basic compilation stubs (`fn main() {}`).
-    - [ ] Execution of `cargo check --no-default-features --features python` compiles cleanly in a purely headless environment.
-    - [ ] Execution of `cargo check --no-default-features --features visual` compiles the visual target.
+    - [x] `Cargo.toml` is created with declared `[features]`, `[lib]`, `[[bin]]`, and explicit dependencies.
+    - [x] `src/lib.rs` and `src/main.rs` exist with basic compilation stubs (`fn main() {}`).
+    - [x] Execution of `cargo check --no-default-features --features python` compiles cleanly in a purely headless environment.
+    - [x] Execution of `cargo check --no-default-features --features visual` compiles the visual target.
 
 ---
 
