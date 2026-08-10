@@ -93,9 +93,9 @@
     - **Python Package Wrapper (`python/marl_engine/__init__.py`):** Re-export native PyO3 modules cleanly.
 * **Constraints:** Target Python environment must be 3.13+. Maturin must compile in `cdylib` mode generating CPython ABI3 compatible artifacts without requiring explicit visual feature flags during standard build processes.
 * **Acceptance Criteria:**
-    - [ ] `pyproject.toml` is created with Maturin set as the build-backend.
-    - [ ] Python virtual environment (`.venv`) is initialized with `torch`, `pettingzoo`, `gymnasium`, and `numpy` installed.
-    - [ ] `maturin develop --no-default-features --features python` executes successfully in the virtual environment and installs the package locally without compilation errors.
+    - [x] `pyproject.toml` is created with Maturin set as the build-backend.
+    - [x] Python virtual environment (`.venv`) is initialized with `torch`, `pettingzoo`, `gymnasium`, and `numpy` installed.
+    - [x] `maturin develop --no-default-features --features python` executes successfully in the virtual environment and installs the package locally without compilation errors.
 
 ---
 
@@ -134,10 +134,10 @@
       ```
 * **Constraints:** PyO3 bindings must strictly use PyO3 v0.22+ `Bound<'py, T>` smart pointers (avoiding deprecated `PyResult<&PyArray1>`). Data transfer to Python must be zero-copy or direct transfer without secondary allocations where applicable.
 * **Acceptance Criteria:**
-    - [ ] `src/lib.rs` compiles without warnings under the `python` feature flag.
-    - [ ] Importing `marl_engine._marl_engine_native` in Python exposes `ping()` and `create_dummy_obs()`.
-    - [ ] Calling `ping()` from Python returns string `"marl_engine_core_ok"`.
-    - [ ] Calling `create_dummy_obs(100)` returns a `numpy.ndarray` of shape `(100,)` and type `float32`.
+    - [x] `src/lib.rs` compiles without warnings under the `python` feature flag.
+    - [x] Importing `marl_engine._marl_engine_native` in Python exposes `ping()` and `create_dummy_obs()`.
+    - [x] Calling `ping()` from Python returns string `"marl_engine_core_ok"`.
+    - [x] Calling `create_dummy_obs(100)` returns a `numpy.ndarray` of shape `(100,)` and type `float32`.
 
 ---
 
