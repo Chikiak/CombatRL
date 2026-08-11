@@ -1,0 +1,21 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "marl_engine"
+version = "0.1.0"
+description = "Deterministic 2D Multi-Agent Tactical Combat Simulation Engine"
+requires-python = ">=3.13"
+dependencies = [
+    "numpy>=2.0.0",
+    "gymnasium>=1.0.0",
+    "pettingzoo>=1.25.0",
+    "torch>=2.5.0"
+]
+
+[tool.maturin]
+features = ["python"]
+features-default = false
+python-source = "python"
+module-name = "marl_engine._marl_engine_native"

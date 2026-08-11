@@ -30,6 +30,7 @@ venv/
 *.egg-info/
 dist/
 build/
+*.pdb
 
 # Logs
 *.log
