@@ -169,6 +169,6 @@
       ```
 * **Constraints:** The test suite must run inside a headless environment (with `DISPLAY` unset or in a standard CI container without libgl1/x11 installed). Execution time must be < 1.0 second.
 * **Acceptance Criteria:**
-    - [ ] Running `maturin develop --no-default-features --features python` followed by `python -m unittest tests/test_headless_bootstrap.py` yields 100% passing tests.
-    - [ ] Environment variable `DISPLAY=""` does not cause import failures or crashes.
-    - [ ] Inspecting the output wheel or dynamic library (`.so`/`.dylib`/`.pyd`) confirms zero missing dynamically-linked GUI library dependencies.
+    - [x] Running `maturin develop --no-default-features --features python` followed by `python -m unittest tests/test_headless_bootstrap.py` yields 100% passing tests.
+    - [x] Environment variable `DISPLAY=""` does not cause import failures or crashes.
+    - [x] Inspecting the output wheel or dynamic library (`.so`/`.dylib`/`.pyd`) confirms zero missing dynamically-linked GUI library dependencies.
