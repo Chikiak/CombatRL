@@ -1,7 +1,14 @@
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
+#![cfg_attr(feature = "python", allow(clippy::useless_conversion))]
+
+pub mod config;
+
+#[cfg(test)]
+mod test_alloc;
+
 #[cfg(feature = "python")]
 use numpy::PyArray1;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 
 #[cfg(feature = "python")]
 #[pyfunction]
