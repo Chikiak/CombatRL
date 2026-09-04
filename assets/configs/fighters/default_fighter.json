@@ -1,0 +1,11 @@
+{
+  "id": "default_fighter",
+  "max_health": 150.0,
+  "max_stamina": 60.0,
+  "move_speed": 5.0,
+  "weight": 1.0,
+  "collider_size": {
+    "x": 0.8,
+    "y": 1.8
+  }
+}

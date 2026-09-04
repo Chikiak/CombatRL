@@ -57,11 +57,11 @@
         - `ConfigError::SubnormalFloatDetected { parameter: &'static str }`
 
 #### 3. Acceptance Criteria and Verification (DoD)
-- [ ] **Arena and Fighter JSON Schemas Created:** Populate default JSON files `assets/configs/arenas/default_arena.json` and `assets/configs/fighters/default_fighter.json` with valid attributes and physical colliders.
+- [x] **Arena and Fighter JSON Schemas Created:** Populate default JSON files `assets/configs/arenas/default_arena.json` and `assets/configs/fighters/default_fighter.json` with valid attributes and physical colliders.
     * *Verification Command / Test:* `cargo check --no-default-features --features python`
-- [ ] **Successful Invariant Validation and Loading:** Validate via unit tests that loading valid DTOs produces compiled, validated `ArenaConfigPOD` and `FighterAttributesPOD` value structures with exact 64-byte alignment and zero dynamic allocations.
+- [x] **Successful Invariant Validation and Loading:** Validate via unit tests that loading valid DTOs produces compiled, validated `ArenaConfigPOD` and `FighterAttributesPOD` value structures with exact 64-byte alignment and zero dynamic allocations.
     * *Verification Command / Test:* `cargo test --lib config::tests::test_valid_loading`
-- [ ] **Rejection of Subnormal, Non-Finite, and Out-of-Bounds Configurations:** Verify that JSON inputs containing `NaN`, subnormal floats ($1.0 \times 10^{-40}$), negative boundaries, or invalid spawn points are rejected with appropriate `ConfigError` variants.
+- [x] **Rejection of Subnormal, Non-Finite, and Out-of-Bounds Configurations:** Verify that JSON inputs containing `NaN`, subnormal floats ($1.0 \times 10^{-40}$), negative boundaries, or invalid spawn points are rejected with appropriate `ConfigError` variants.
     * *Verification Command / Test:* `cargo test --lib config::tests::test_invalid_bounds_rejection`
 
 ---
