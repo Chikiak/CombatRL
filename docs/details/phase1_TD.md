@@ -206,9 +206,54 @@ Este documento registra las decisiones técnicas tomadas durante la implementaci
 
 ---
 
+## ISSUE-007: Core Simulation State Representation and Deterministic State Hashing
+
+### D15 — Estructura y alineación SIMD en `FighterState` y `WorldState`
+**Decisión:** `FighterState` declarado como `repr(C, align(32))` de 32 bytes exactos; `WorldState` como `repr(C, align(64))` de 2112 bytes exactos (33 bloques L1 de 64 bytes, sin padding final), garantizando localidad de caché y cero padding no inicializado.
+
+**Contexto:** Cumple los requisitos de L1 cache line alignment (64 bytes) y SIMD alignment (32 bytes) para entidades, evitando divisiones de caché y asegurando que las ranuras inactivas `[active_count..64]` estén completamente zero-inicializadas (`0x00`).
+
+**Pros:**
+- Layout gapless validado en compile-time con `static_assertions`.
+- Cero asignaciones de heap (`Copy`/`Clone`/`reset`/`compute_hash`).
+
+**Contras:**
+- Requiere mantenimiento estricto del orden y padding explícito ante cambios de campos.
+
+---
+
+### D16 — Hash determinista canónico `xxh3_64` vía crate `xxhash-rust`
+**Decisión:** Utilizar el crate canónico `xxhash-rust` (`features = ["xxh3"]`) para invocar `xxhash_rust::xxh3::xxh3_64(&[u8])` sobre la vista binaria de `WorldState`, descartando implementaciones caseras anteriores para garantizar interoperabilidad exacta con `xxhash.xxh3_64` de Python y lectura little-endian robusta ante cambios de endianness de arquitectura (NFR-02).
+
+**Contexto:** La auditoría detectó que un hash casero anterior no cumplía con el estándar XXH3-64 ni manejaba endianness canónico. `xxhash-rust` provee un hash `no_std`, zero-alloc y conforme al estándar oficial.
+
+**Pros:**
+- Interoperabilidad bit-exacta con bibliotecas de Python y otros runtimes (`xxhash`).
+- Little-endian canónico garantizado cross-platform.
+- Cero asignaciones de heap (single-pass sobre `&[u8]`).
+
+**Contras:**
+- Dependencia externa en Cargo.toml (mitigada por ser `#![no_std]` y puro Rust).
+
+---
+
+### D17 — Canonicalización branchless de ceros negativos (`-0.0f32` → `+0.0f32`)
+**Decisión:** Manipulación a nivel de bits de IEEE 754 (`to_bits`, aislamiento de signo y magnitud cero) ejecutada en tiempo de mutación/canonicalización sin saltos condicionales (`branchless`), asegurando invariabilidad de hash ante variaciones de signo en ceros.
+
+**Contexto:** Evita discrepancias de hash `xxh3_64` causadas por la representación de `-0.0f32` (`0x80000000`) frente a `+0.0f32` (`0x00000000`).
+
+**Pros:**
+- Cero saltos condicionales (branchless), optimizable por LLVM.
+- Preserva valores distintos de cero intactos.
+
+**Contras:**
+- Lógica de bits explícita que requiere comentarios sobre semántica IEEE 754.
+
+---
+
 ### Resumen de dependencias nuevas (relativas a Phase 0)
 - `thiserror` (dependencia de runtime) — manejo idiomático de errores.
-- `static_assertions` (dev-dependency) — aserciones de compile-time para tamaño y alineación en PODs (`ArenaConfigPOD`, `FighterAttributesPOD`, `Vector2D`, `PrngStatePOD`).
+- `static_assertions` (dev-dependency) — aserciones de compile-time para tamaño y alineación en PODs.
 - `alloc_counter` (dev-dependency) — verificación de cero alocaciones heap en tests unitarios (`assert_no_alloc`).
 
 
