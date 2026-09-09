@@ -144,11 +144,11 @@
     * Entity lookups using invalid entity IDs MUST return `Result<&FighterState, StateError::EntityNotFound>` using domain error enum `StateError::EntityNotFound`.
 
 #### 3. Acceptance Criteria and Verification (DoD)
-- [ ] **Bit-Exact Hash Invariance Verification:** Validate that identical `WorldState` instances produce identical `xxh3_64` hashes across test executions.
+- [x] **Bit-Exact Hash Invariance Verification:** Validate that identical `WorldState` instances produce identical `xxh3_64` hashes across test executions.
     * *Verification Command / Test:* `cargo test --lib state::tests::test_state_hash_consistency`
-- [ ] **Float Negative Zero (`-0.0`) Canonical Hash Test:** Confirm that setting velocity or position components to `-0.0f32` yields the exact same hash as `+0.0f32`.
+- [x] **Float Negative Zero (`-0.0`) Canonical Hash Test:** Confirm that setting velocity or position components to `-0.0f32` yields the exact same hash as `+0.0f32`.
     * *Verification Command / Test:* `cargo test --lib state::tests::test_negative_zero_hash_invariance`
-- [ ] **Zero Heap Allocation Verification:** Assert via unit tests that copying, snapshotting, and hashing `WorldState` triggers zero dynamic memory allocations on the heap.
+- [x] **Zero Heap Allocation Verification:** Assert via unit tests that copying, snapshotting, and hashing `WorldState` triggers zero dynamic memory allocations on the heap.
     * *Verification Command / Test:* `cargo test --lib state::tests::test_world_state_zero_alloc`
 
 ---
