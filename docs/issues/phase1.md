@@ -99,11 +99,11 @@
     * Out-of-bounds or invalid state hydration descriptors MUST fail gracefully via `Result<DeterministicRng, PRNGError::InvalidState>` returning structured error enum `PRNGError::InvalidState`.
 
 #### 3. Acceptance Criteria and Verification (DoD)
-- [ ] **Identical Sequence by Seed Test:** Verify that two independent `DeterministicRng` instances with identical seeds produce bit-identical floating-point sequences.
+- [x] **Identical Sequence by Seed Test:** Verify that two independent `DeterministicRng` instances with identical seeds produce bit-identical floating-point sequences.
     * *Verification Command / Test:* `cargo test --lib prng::tests::test_identical_sequence`
-- [ ] **Serde Hydration State Restoration:** Verify that serializing a generator to JSON and deserializing it re-hydrates `word_pos` (`u128`) and `stream_id` (`u64`) correctly, producing identical subsequent values.
+- [x] **Serde Hydration State Restoration:** Verify that serializing a generator to JSON and deserializing it re-hydrates `word_pos` (`u128`) and `stream_id` (`u64`) correctly, producing identical subsequent values.
     * *Verification Command / Test:* `cargo test --lib prng::tests::test_serde_restoration`
-- [ ] **Zero Dynamic Allocation Verification:** Assert via unit tests that state export and uniform sampling execute strictly on the Stack with zero heap allocation.
+- [x] **Zero Dynamic Allocation Verification:** Assert via unit tests that state export and uniform sampling execute strictly on the Stack with zero heap allocation.
     * *Verification Command / Test:* `cargo test --lib prng::tests::test_state_bytes_zero_alloc`
 
 ---
