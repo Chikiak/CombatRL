@@ -2,6 +2,7 @@
 
 pub mod config;
 pub mod prng;
+pub mod state;
 
 #[cfg(test)]
 mod test_alloc;
