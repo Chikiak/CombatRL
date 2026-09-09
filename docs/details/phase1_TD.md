@@ -147,9 +147,68 @@ Este documento registra las decisiones técnicas tomadas durante la implementaci
 
 ---
 
+## ISSUE-006: Encapsulated Seeded PRNG and Deterministic RNG Manager
+
+### D11 — Módulo único `src/prng.rs` (no sub-módulos)
+**Decisión:** Implementar `PrngStatePOD`, `PRNGError`, `DeterministicRng` y los tests en un único `src/prng.rs`, en contraste con `src/config/` que se dividió en submódulos.
+
+**Contexto:** El issue especifica el path literal `src/prng.rs`. A diferencia de config (que agrupa DTO + POD + loader + vector + error para reuso transversal), el dominio PRNG es cohesivo y pequeño (~130 líneas de lógica). ISSUE-007 importará `PrngStatePOD` — ya es público dentro de `lib.rs` vía `pub mod prng;`.
+
+**Pros:**
+- Coherencia con el path literal del issue.
+- Sin acoplamiento adicional; el único símbolo reutilizable (`PrngStatePOD`) se exporta directamente.
+
+**Contras:**
+- El archivo mezcla POD, error, lógica y tests; aceptable por su tamaño contenido.
+
+---
+
+### D12 — `fork()` = seed derivado + stream incrementado
+**Decisión:** `fork()` extrae `child_seed = parent.inner.next_u64()` (avanza el cursor del padre) y construye el hijo con `stream_id = parent.stream_id + 1`.
+
+**Contexto:** El issue exige avanzar el cursor del padre antes de derivar el seed y garantizar streams no solapados. Combinando un seed nuevo (derivado de la salida del padre) con un `stream_id` distinto se obtiene doble garantía de independencia sin depender de la monotonicidad interna de un solo mecanismo.
+
+**Pros:**
+- Doble aislamiento: seed criptográficamente distinto + stream distinto.
+- `PrngStatePOD.stream_id` queda con valor semántico real, distinguible entre padre e hijos.
+- Sencillo de razonar y de testear (`test_fork_stream_hierarchy`).
+
+**Contras:**
+- Consume un `next_u64()` extra del padre (desplaza la secuencia una palabra); es intencional y determinista.
+
+---
+
+### D13 — `gen_range_f32` sin división (inyección de mantisa)
+**Decisión:** Tomar `next_u32()`, descartar los 9 bits bajos (`>> 9`) para quedarse con 23 bits de mantisa, inyectarlos en `f32::from_bits(0x3F80_0000 | mantissa)` para obtener `[1.0, 2.0)`, restar `1.0` → `[0.0, 1.0)`, y escalar `low + unit * (high - low)`.
+
+**Contexto:** El issue prohíbe división de punto flotante y FMA en el muestreo. Este mapeo usa solo OR-por-bits, resta y multiplicación, cumpliendo la invariante y siendo alineable a SIMD.
+
+**Pros:**
+- Cumple estrictamente la invariante "Division-Free IEEE 754 Mantissa Bit Injection".
+- Sin FMA ni división: resultados bit-exactos cross-platform.
+
+**Contras:**
+- Asume `low <= high` (contract del llamador); el resultado respeta `[low, high)`.
+
+---
+
+### D14 — Serde del PRNG delegado a `PrngStatePOD`
+**Decisión:** `DeterministicRng` no deriva `Serialize`/`Deserialize`; se implementan manualmente delegando en `export_pod()` / `from_pod()`. `PrngStatePOD` deriva los traits (el campo `u128` es serializable por serde).
+
+**Contexto:** `ChaCha8Rng` no implementa los traits serde (motivo de `PrngStatePOD`). Re-hidratar reconstruyendo desde `seed` + `set_stream(stream_id)` + `set_word_pos(word_pos)` restaura el cursor exacto.
+
+**Pros:**
+- Formato de estado explícito y estable (`seed`, `stream_id`, `word_pos`), válido como payload de checkpoint.
+- `set_word_pos(u128)` no trunca el offset interno de ChaCha.
+
+**Contras:**
+- Serializa el objeto completo como POD; cualquier cambio futuro en la representación interna debe reflejarse en `from_pod`.
+
+---
+
 ### Resumen de dependencias nuevas (relativas a Phase 0)
 - `thiserror` (dependencia de runtime) — manejo idiomático de errores.
-- `static_assertions` (dev-dependency) — aserciones de compile-time para tamaño y alineación en PODs (`ArenaConfigPOD`, `FighterAttributesPOD`, `Vector2D`).
+- `static_assertions` (dev-dependency) — aserciones de compile-time para tamaño y alineación en PODs (`ArenaConfigPOD`, `FighterAttributesPOD`, `Vector2D`, `PrngStatePOD`).
 - `alloc_counter` (dev-dependency) — verificación de cero alocaciones heap en tests unitarios (`assert_no_alloc`).
 
 

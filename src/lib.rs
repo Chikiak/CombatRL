@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "python", allow(clippy::useless_conversion))]
 
 pub mod config;
+pub mod prng;
 
 #[cfg(test)]
 mod test_alloc;
