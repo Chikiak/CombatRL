@@ -170,18 +170,18 @@
 * **Core Logic Specification and Structural Contracts:**
     * **Exact In-Memory Struct Layout Specification (`EntityActionPOD`):**
         - Attributes declared strictly as `repr(C, align(32))` with an exact size of 32 bytes:
-            1. `entity_id: u32` (Offset 0..4, 4 bytes): Target entity slot index within active simulation entities array.
-            2. `move_intent: Vector2D` (Offset 4..12, 8 bytes): Normalized directional movement input vector (`x: f32` 4 bytes, `y: f32` 4 bytes, 8-byte aligned).
-            3. `action_flags: u32` (Offset 12..16, 4 bytes): Bitfield mask flags encoding discrete action triggers (Bit 0: Attack, Bit 1: Block, Bit 2: Dodge, Bit 3: Weapon Swap).
-            4. `target_entity_id: u32` (Offset 16..20, 4 bytes): Slot index of targeted opposing entity for directional combat actions.
-            5. `_pad: [u8; 12]` (Offset 20..32, 12 bytes): Explicit zero-initialized padding array completing 32-byte struct boundary alignment.
+             1. `move_intent: Vector2D` (Offset 0..8, 8 bytes): Normalized directional movement input vector (`x: f32` 4 bytes, `y: f32` 4 bytes, 8-byte aligned).
+             2. `entity_id: u32` (Offset 8..12, 4 bytes): Target entity slot index within active simulation entities array.
+             3. `action_flags: u32` (Offset 12..16, 4 bytes): Bitfield mask flags encoding discrete action triggers (Bit 0: Attack, Bit 1: Block, Bit 2: Dodge, Bit 3: Weapon Swap).
+             4. `target_entity_id: u32` (Offset 16..20, 4 bytes): Slot index of targeted opposing entity for directional combat actions.
+             5. `_pad: [u8; 12]` (Offset 20..32, 12 bytes): Explicit zero-initialized padding array completing 32-byte struct boundary alignment.
     * **Stack-Allocated Direct-Indexed Action Contract:**
         - Action inputs MUST be provided as a stack-allocated array `[EntityActionPOD; MAX_SIMULTANEOUS_ENTITIES]` declared as `repr(C, align(32))`.
         - Direct indexing by slot index ensures $O(1)$ constant memory access without dynamic heap allocations (`Vec`).
     * **Contiguous Attribute Storage Contract:**
         - Physical attributes MUST be stored in contiguous array `[FighterAttributesPOD; MAX_SIMULTANEOUS_ENTITIES]` aligned to 64-byte boundaries.
     * **3-Phase SIMD Execution Pipeline (`step`):**
-        - **Phase 1 (Branchless Intent Normalization Pass):** Scan actions contiguously, computing direction vector norms. Clamp magnitudes exceeding $1.0$ using branchless multiply/masking without conditional jumps.
+        - **Phase 1 (Branchless Clamped Intent Normalization Pass):** Scan actions contiguously, computing direction vector norms. Clamp denominator via branchless `max(1.0)` and scale via IEEE division, ensuring zero division-by-zero or subnormal/NaN contamination without conditional branches.
         - **Phase 2 (Euler Kinematic Integration Pass with FTZ):** Update velocity ($\vec{v}_{t+1} = \vec{v}_t + \vec{a} \Delta t$) and position ($\vec{p}_{t+1} = \vec{p}_t + \vec{v}_{t+1} \Delta t$) contiguously. Apply Flush-To-Zero (FTZ): any velocity component $|v| < 1.17549435 \times 10^{-38}$ MUST be clamped to canonical positive zero (`+0.0f32`).
         - **Phase 3 (Branchless Boundary Clamping Pass):** Clamp positions strictly inside arena limits using branchless `min`/`max` instructions. Reset velocities on crossed axes strictly to `+0.0f32` using branchless conditional moves (`cmov`/select masks), preserving inward momentum and hash parity.
     * **PRNG and Tick Counter Advancement:**
