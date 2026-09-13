@@ -38,3 +38,7 @@ egui = { version = "0.28", optional = true }
 
 [dev-dependencies]
 alloc_counter = "0.0.4"
+
+[[bench]]
+name = "bench_engine"
+harness = false

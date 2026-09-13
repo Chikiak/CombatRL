@@ -190,11 +190,11 @@
     * Out-of-bounds entity action indices MUST return strongly-typed `Result<(), EngineError::InvalidEntityId>` using domain enum `EngineError::InvalidEntityId`.
 
 #### 3. Acceptance Criteria and Verification (DoD)
-- [ ] **Discrete Kinematic Advance Verification:** Validate that calling `step()` with linear action intents advances fighter positions proportionally according to configured speed and increments tick count by 1.
+- [x] **Discrete Kinematic Advance Verification:** Validate that calling `step()` with linear action intents advances fighter positions proportionally according to configured speed and increments tick count by 1.
     * *Verification Command / Test:* `cargo test --lib engine::tests::test_step_kinematics`
-- [ ] **Invalid Action Index Protection:** Confirm that passing actions with invalid `entity_id` values returns `Err(EngineError::InvalidEntityId)` without panicking.
+- [x] **Invalid Action Index Protection:** Confirm that passing actions with invalid `entity_id` values returns `Err(EngineError::InvalidEntityId)` without panicking.
     * *Verification Command / Test:* `cargo test --lib engine::tests::test_invalid_action_rejection`
-- [ ] **Arena Boundary Clamping and Canonical Velocity Verification:** Validate that entities colliding with arena boundaries are clamped geometrically and their velocity components on the collision axis are reset to `+0.0f32`.
+- [x] **Arena Boundary Clamping and Canonical Velocity Verification:** Validate that entities colliding with arena boundaries are clamped geometrically and their velocity components on the collision axis are reset to `+0.0f32`.
     * *Verification Command / Test:* `cargo test --lib engine::tests::test_arena_bounds_clamping`
 
 ---
@@ -229,9 +229,9 @@
     * Determinism mismatches MUST panic immediately, outputting the exact tick index, divergent entity slot, and state hashes (`Engine A Hash: 0x..., Engine B Hash: 0x...`).
 
 #### 3. Acceptance Criteria and Verification (DoD)
-- [ ] **10,000-Tick Determinism Verification:** Execute integration tests asserting 100% state hash equality over 10,000 ticks across independent engine instances.
+- [x] **10,000-Tick Determinism Verification:** Execute integration tests asserting 100% state hash equality over 10,000 ticks across independent engine instances.
     * *Verification Command / Test:* `cargo test --test test_determinism -- --nocapture`
-- [ ] **Reset Memory Residue and Isolation Verification:** Confirm that `reset()` restores pristine world states with zeroed inactive slots (`0x00`), matching freshly initialized engines identically.
+- [x] **Reset Memory Residue and Isolation Verification:** Confirm that `reset()` restores pristine world states with zeroed inactive slots (`0x00`), matching freshly initialized engines identically.
     * *Verification Command / Test:* `cargo test --test test_determinism test_reset_isolation`
-- [ ] **Headless Simulation Throughput Certification (> 1,000,000 SPS):** Benchmark execution under `black_box` barriers certifying simulation throughput exceeds 1,000,000 Steps Per Second.
+- [x] **Headless Simulation Throughput Certification (> 1,000,000 SPS):** Benchmark execution under `black_box` barriers certifying simulation throughput exceeds 1,000,000 Steps Per Second.
     * *Verification Command / Test:* `cargo bench`

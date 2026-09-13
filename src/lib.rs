@@ -5,6 +5,8 @@ pub mod engine;
 pub mod prng;
 pub mod state;
 
+pub use config::{load_default_arena, load_default_fighter, Vector2D, ArenaConfigPOD, FighterAttributesPOD};
+
 #[cfg(test)]
 mod test_alloc;
 
