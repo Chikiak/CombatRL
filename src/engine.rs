@@ -38,6 +38,14 @@ fn ftz_zero(v: f32) -> f32 {
     f32::from_bits(bits & !(flush.wrapping_neg()))
 }
 
+#[inline(always)]
+fn deterministic_rsqrt_nr(x: f32) -> f32 {
+    let i = x.to_bits();
+    let y0 = f32::from_bits(0x5F37_59DF - (i >> 1));
+    let half_x = 0.5 * x;
+    y0 * (1.5 - half_x * y0 * y0)
+}
+
 pub struct TickEngine {
     arena: ArenaConfigPOD,
     template: FighterAttributesPOD,
@@ -120,12 +128,14 @@ impl TickEngine {
             let attrs = &self.attributes[i];
             let fighter = &mut self.state.fighters[i];
 
-            // Phase 1: Branchless Clamped Intent Normalization (IEEE division with clamped divisor)
+            // Phase 1: Branchless Clamped Intent Normalization (Deterministic Newton-Raphson rsqrt)
             let intent = act.move_intent;
             let len_sq = intent.x * intent.x + intent.y * intent.y;
-            let abs_len = len_sq.sqrt();
-            let abs_len_safe = abs_len.max(1.0); // branchless maxss
-            let scale = 1.0 / abs_len_safe;      // divisor never 0 or <1
+            let scale = if len_sq <= 1.0 {
+                1.0
+            } else {
+                deterministic_rsqrt_nr(len_sq)
+            };
 
             let dir_x = intent.x * scale;
             let dir_y = intent.y * scale;
