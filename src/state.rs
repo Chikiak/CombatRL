@@ -269,7 +269,7 @@ mod tests {
         state.fighters[0].id = 10;
 
         alloc_counter::deny_alloc(|| {
-            let _cloned = state.clone();
+            let _cloned = state;
         });
 
         alloc_counter::deny_alloc(|| {

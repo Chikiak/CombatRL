@@ -116,13 +116,13 @@ mod tests {
         for _ in 0..100 {
             let (va, vb) = (af.gen_range_f32(-10.0, 10.0), bf.gen_range_f32(-10.0, 10.0));
             assert_eq!(va.to_bits(), vb.to_bits());
-            assert!(va >= -10.0 && va < 10.0);
+            assert!((-10.0..10.0).contains(&va));
         }
     }
 
     #[test]
     fn test_serde_restoration() {
-        let mut original = DeterministicRng::new(0xFEED_F00D_CAFE_1);
+        let mut original = DeterministicRng::new(0x000F_EEDF_00DC_AFE1);
         let mut expected = original.fork();
         for _ in 0..10 {
             let _ = expected.gen_range_f32(0.0, 1.0);
@@ -160,12 +160,12 @@ mod tests {
 
     #[test]
     fn test_state_bytes_zero_alloc() {
-        let mut rng = DeterministicRng::new(0xCAFEBABE_1);
+        let mut rng = DeterministicRng::new(0x000C_AFEB_ABE1);
         let pod = alloc_counter::deny_alloc(|| rng.export_pod());
-        assert_eq!(pod.seed, 0xCAFEBABE_1);
+        assert_eq!(pod.seed, 0x000C_AFEB_ABE1);
 
         let v = alloc_counter::deny_alloc(|| rng.gen_range_f32(0.0, 1.0));
-        assert!(v >= 0.0 && v < 1.0);
+        assert!((0.0..1.0).contains(&v));
 
         let b = alloc_counter::deny_alloc(|| rng.gen_bool(0.5));
         let _ = b;
