@@ -1,5 +1,6 @@
 # IDE & Editor files
 .idea/
+.obsidian/
 .vscode/
 *.swp
 *.swo
@@ -39,3 +40,6 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+# OpenCode editor tooling
+.opencode/
+opencode.json

@@ -1,7 +1,19 @@
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
+#![cfg_attr(feature = "python", allow(clippy::useless_conversion))]
+
+pub mod config;
+pub mod engine;
+pub mod prng;
+pub mod state;
+
+pub use config::{load_default_arena, load_default_fighter, Vector2D, ArenaConfigPOD, FighterAttributesPOD};
+
+#[cfg(test)]
+mod test_alloc;
+
 #[cfg(feature = "python")]
 use numpy::PyArray1;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 
 #[cfg(feature = "python")]
 #[pyfunction]
