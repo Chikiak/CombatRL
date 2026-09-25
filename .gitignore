@@ -1,5 +1,6 @@
 # IDE & Editor files
 .idea/
+.obsidian/
 .vscode/
 *.swp
 *.swo
