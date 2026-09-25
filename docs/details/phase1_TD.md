@@ -254,8 +254,137 @@ Este documento registra las decisiones técnicas tomadas durante la implementaci
 ### Resumen de dependencias nuevas (relativas a Phase 0)
 - `thiserror` (dependencia de runtime) — manejo idiomático de errores.
 - `static_assertions` (dev-dependency) — aserciones de compile-time para tamaño y alineación en PODs.
+- `xxhash-rust` (dependencia de runtime) — cálculo hash xxh3_64 para determinismo y state hashing.
+- `rand` / `rand_chacha` (dependencia de runtime) — generadores de números pseudo-aleatorios criptográficos para el PRNG determinista.
 - `alloc_counter` (dev-dependency) — verificación de cero alocaciones heap en tests unitarios (`assert_no_alloc`).
 
+---
 
+## ISSUE-008: [Engine Core] Fixed-Rate Discrete Tick Engine Loop and State Advance Mechanics
+
+### D18 — Fase 0 de validación fail-fast previa a mutación en `step()`
+**Decisión:** Introducir un pase inicial de validación ("Phase 0") en el método `step()` de `TickEngine` que verifica antes de cualquier modificación de estado que los `entity_id` de las acciones correspondan exactamente al índice del slot (`act_id as usize == i`) y estén dentro del rango de entidades activas (`< active_count`). Si falla, retorna `Err(EngineError::InvalidEntityId(act_id))` sin alterar el estado ni avanzar el tick.
+
+**Contexto:** El plan inicial especificaba control de errores ante IDs inválidos, pero añadir esta validación como pase estricto previo evita mutaciones parciales ante acciones corruptas o desincronizadas, garantizando robustez transaccional por tick.
+
+**Pros:**
+- Transaccionalidad estricta: si una acción es inválida, el mundo permanece intacto (`current_tick` no avanza).
+- Fail-fast determinista y predecible.
+
+**Contras:**
+- Añade un bucle de validación lineal O(N) adicional antes del pipeline cinemático (despreciable con N ≤ 64).
 
 ---
+
+### D19 — Normalización de intención con Newton-Raphson rsqrt
+**Decisión:** En la Fase 1 del pipeline de `step()`, en lugar de utilizar división de punto flotante convencional para normalizar el vector de movimiento `move_intent`, se emplea una aproximación de raíz cuadrada inversa rápida mediante el algoritmo de Newton-Raphson (`deterministic_rsqrt_nr`) con constante Quake (`0x5F37_59DF`) para vectores con norma al cuadrado mayor a 1.0.
+
+**Contexto:** Las instrucciones de división (`div`) y raíz cuadrada (`sqrt`) estándar de punto flotante pueden diferir ligeramente en microarquitecturas x86_64 frente a ARM64, rompiendo la garantía bit-exacta de determinismo (NFR-02). Una implementación basada en operaciones enteras de bits (`to_bits`, `from_bits`) garantiza idénticos resultados en cualquier plataforma.
+
+**Pros:**
+- Determinismo bit-exacto cross-platform garantizado (sin dependencias de FPU divergentes para divisiones/raíces).
+- Cero divisiones de punto flotante en el trayecto crítico de normalización.
+
+**Contras:**
+- Lógica numérica ligeramente más compleja que requiere validación de precisión (suficiente para normalización direccional de intendencia).
+
+---
+
+### D20 — Integración cinemática directa (velocidad objetivo sin aceleración)
+**Decisión:** En la Fase 2 del pipeline, el cálculo de la velocidad en el siguiente tick establece directamente la velocidad objetivo (`target_v = dir * move_speed`) aplicando Flush-To-Zero (`ftz_zero`), sin acumulación incremental de aceleración (`v_{t+1} = v_t + a·Δt`). La posición se integra mediante Euler estándar (`p_{t+1} = p_t + v_{t+1} · Δt`).
+
+**Contexto:** El sistema de aceleración y física de combate propiamente dicha se delegó a la Phase 2. Para la Phase 1 (enfoque exclusivamente cinemático y de límites), asignar velocidad objetivo directa evita drift de velocidad innecesario y simplifica la verificación de spacing.
+
+**Pros:**
+- Modelo cinemático sencillo, determinista y predecible para pruebas de espaciamiento y colisión inicial.
+- Facilita la certificación de throughput > 1,000,000 SPS.
+
+**Contras:**
+- Ausencia temporal de inercia o físicas de aceleración (se introducirán en Phase 2).
+
+---
+
+### D21 — FTZ y clamping de velocidad por manipulación bitwise branchless
+**Decisión:** La supresión de subnormales (`ftz_zero`) y el reajuste de velocidad en colisiones con paredes (Fase 3) se implementan mediante operaciones a nivel de bits (máscaras y `wrapping_neg`) sin saltos condicionales (`branchless`). En la colisión de eje, si se recorta la posición, la componente de velocidad correspondiente se anula bit a bit forzando `+0.0f32` (`0x00000000`).
+
+**Contexto:** Previene microcode stalls por números subnormales y evita contaminación de signos en ceros ante colisiones con los límites del arena.
+
+**Pros:**
+- Cero saltos condicionales (branchless), eliminando penalizaciones por fallos de predicción de saltos.
+- Forzado robusto a `+0.0f32` canónico, evitando la aparición de `-0.0` en rebotes o paradas.
+
+**Contras:**
+- Código que depende de manipulación explícita de representación binaria IEEE 754.
+
+---
+
+### D22 — API extendida del motor (`spawn`, `state_mut`, `reset` reconstructivo)
+**Decisión:** Proveer métodos públicos adicionales en `TickEngine`: `spawn()` para añadir entidades con asignación automática de atributos base y posicionamiento simétrico inicial (Fighter 0 a la izquierda, Fighter 1 a la derecha con orientaciones opuestas), `state_mut()` para mutaciones controladas en tests, y `reset(new_seed)` implementado mediante reconstrucción limpia (`*self = Self::new(...)`). El enum `EngineError` incorpora la variante `MaxEntitiesReached`.
+
+**Contexto:** Facilita la configuración headless, la inicialización de escenarios de prueba deterministas y la gestión de re-hacer estados en bucles de entrenamiento MARL.
+
+**Pros:**
+- Inicialización y reinicio limpios sin fugas de estado residual en memoria.
+- Soporte robusto para la capacidad máxima de entidades (`MAX_SIMULTANEOUS_ENTITIES = 64`).
+
+**Contras:**
+- `reset` reasigna el struct completo clonando/recreando arena y atributos (operación ligera en stack, aceptable).
+
+---
+
+## ISSUE-009: [Engine Core] Bit-Exact Determinism Verification and Multi-Instance Regression Test Suite
+
+### D23 — Configuración simplificada de compilador en `.cargo/config.toml`
+**Decisión:** Configurar los perfiles de compilación y flags en `.cargo/config.toml` habilitando `lto = "fat"` y `codegen-units = 1` en `[profile.release]`, y fijando `rustflags = ["-C", "target-feature=-fma"]` a nivel global de compilación.
+
+**Contexto:** El plan original contemplaba deshabilitar la reducción FMA mediante argumentos LLVM (`llvm-args=-enable-fma-lower=false`), pero dicho parámetro fue omitido por incompatibilidades con versiones modernas de LLVM, siendo suficiente la desactivación de la característica de objetivo `target-feature=-fma` para evitar variaciones de redondeo FMA entre arquitecturas.
+
+**Pros:**
+- Compatibilidad cross-version con toolchains modernos de Rust y LLVM.
+- Desactivación efectiva de FMA para garantizar determinismo cross-platform.
+
+**Contras:**
+- Menor optimización de fused multiply-add en hardware que lo soporte nativamente (aceptado como costo necesario para estricto determinismo NFR-02).
+
+---
+
+### D24 — Harness de benchmarking personalizado (`harness = false`) con `black_box`
+**Decisión:** Implementar el benchmark de rendimiento (`benches/bench_engine.rs`) como un binario independiente (`harness = false`) utilizando `std::time::Instant`, bucles con `core::hint::black_box` tanto en las acciones de entrada como en los hashes de salida, y acumulación XOR (`acc`) para impedir la eliminación de código muerto (DCE) por parte del optimizador de LLVM.
+
+**Contexto:** Permite medir con precisión milisegundo el throughput real de pasos de simulación sin depender de frameworks de benchmarking externos complejos, garantizando que el compilador no optimice el bucle de ejecución.
+
+**Pros:**
+- Control absoluto sobre la medición de pasos por segundo (SPS).
+- Prevención robusta de DCE mediante barreras `black_box`.
+
+**Contras:**
+- Requiere lógica propia de cálculo de SPS en lugar de estadísticas automáticas de un framework especializado.
+
+---
+
+### D25 — Certificación de throughput condicional mediante `BENCH_STRICT_CERTIFY`
+**Decisión:** El benchmark emite por defecto las métricas de pasos por segundo (`Steps Per Second: ...`), activando la aserción estricta de superación de 1,000,000 SPS únicamente cuando la variable de entorno `BENCH_STRICT_CERTIFY` está presente.
+
+**Contexto:** El rendimiento por segundo depende fuertemente de las capacidades del hardware del host donde se ejecute la compilación (CI vs máquina de desarrollo local). Hacer la aserción condicional evita falsos positivos en entornos de desarrollo de menor potencia sin perder la capacidad de validación estricta en pipelines de CI certificados.
+
+**Pros:**
+- Evita fallos de test en entornos locales con hardware limitado.
+- Permite certificación formal estricta en servidores CI de alto rendimiento.
+
+**Contras:**
+- Requiere configurar la variable de entorno en scripts de CI para forzar la validación de rendimiento.
+
+---
+
+### D26 — Pruebas de integración de determinismo y aislamiento de `reset()`
+**Decisión:** Implementar la suite de integración en `tests/test_determinism.rs` ejecutando dos instancias paralelas (`engine_a`, `engine_b`) durante 10,000 ticks con un flujo de acciones estocástico derivado de un stream PRNG aislado, verificando igualdad exacta de hashes `xxh3_64` en cada tick (con volcado detallado de diagnóstico ante discrepancias) y validando mediante `from_raw_parts` que `reset()` restaura un estado prístino con ceros absolutos (`0x00`) en todas las ranuras inactivas.
+
+**Contexto:** Valida formalmente el hito final de Phase 1, garantizando que no existen fugas de memoria residual, derivas de coma flotante ni divergencias de estado a lo largo de ejecuciones prolongadas.
+
+**Pros:**
+- Cobertura de prueba exhaustiva (10,000 ticks continuos).
+- Diagnóstico exacto (tick y slot) ante cualquier mínima divergencia de estado.
+- Verificación estricta de limpieza de memoria en slots inactivos.
+
+**Contras:**
+- Tiempo de ejecución ligeramente mayor en la suite de integración de tests (del orden de milisegundos, aceptable).
